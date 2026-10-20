@@ -1,5 +1,6 @@
+import tomllib
 from typing import Annotated
-
+from pathlib import Path
 from pydantic import BaseModel, Field,  StringConstraints
 
 
@@ -40,3 +41,15 @@ class Settings(BaseModel):
         description="Maximum number of diff characters allowed before chunking or summarization.",
         gt=0
     )
+
+def load_settings(configration_file_path:None|str|Path = None) -> Settings:
+
+    settings=Settings()
+    if configration_file_path is None:
+        return settings
+    with open(configration_file_path,"rb") as f:
+        resulting_dict = tomllib.load(f)
+        # settings.model=resulting_dict["model"]
+        # settings.base_url=resulting_dict["base_url"]
+        # settings.temperature=resulting_dict["temperature"]
+    return Settings(**resulting_dict)
