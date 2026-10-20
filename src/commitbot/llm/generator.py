@@ -2,6 +2,9 @@ import importlib.resources
 from typing import List
 import os
 from dotenv import load_dotenv
+
+from commitbot.llm.validation import validate_suggestions
+
 load_dotenv()
 from langchain.messages import  HumanMessage ,SystemMessage
 from commitbot.config import Settings, load_settings
@@ -39,7 +42,21 @@ def generate_commit_suggestions(staged_diff:str,recent_messages:List[str],settin
     llm = create_chat_model(settings)
     structured_suggesstions = llm.with_structured_output(CommitSuggestions,method="json_schema")
     output = structured_suggesstions.invoke([SystemMessage(prompt),HumanMessage(context)])
-    return output
+    try:
+        finall_commits_suggestions = validate_suggestions(
+            output,
+        )
+    except ValueError as e:
+        retry_messages = [
+            SystemMessage(content=prompt),
+            HumanMessage(content=context),
+            HumanMessage(content=f"Validation error: {e}. Please correct and return valid commit suggestions."),
+        ]
+        retry_output = structured_suggesstions.invoke(retry_messages)
+        retry_commit=validate_suggestions(
+            retry_output, )
+        return retry_commit
+    return finall_commits_suggestions
 
 if __name__ == "__main__":
     path = os.getenv("PATHCALCULATOR")
