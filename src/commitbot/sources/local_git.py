@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+import os
 import subprocess
 from pathlib import Path
 from commitbot.exceptions import NotGitRepositoryError, GitNotInstalledError ,GitCommandError
@@ -43,3 +46,10 @@ def get_staged_diff(repo: str | Path | None = None) -> str:
         raise GitCommandError("Failed to read staged changes.") from e
 
     return result.stdout
+
+if __name__ == "__main__":
+    path = os.getenv("PATHCALCULATOR")
+    res_find_repo_root = find_repo_root(path)
+    res_staged=get_staged_diff(path)
+    print(res_find_repo_root)
+    print(res_staged)

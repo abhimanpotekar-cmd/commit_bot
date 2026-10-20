@@ -1,5 +1,7 @@
 import subprocess
-
+from dotenv import load_dotenv
+load_dotenv()
+import os
 from pathlib import Path
 from typing import List
 
@@ -28,4 +30,7 @@ def get_recent_commit_messages(repo:str|Path|None=None,limit:int=10)->List[str]:
 
         raise GitCommandError("Failed to read recent commit messages.") from e
 
+if __name__ == "__main__":
+    path = os.getenv("PATHCALCULATOR")
+    print(get_recent_commit_messages(path,limit=2))
 
