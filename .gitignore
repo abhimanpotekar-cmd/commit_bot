@@ -1,0 +1,29 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE & Editor settings (PyCharm / VS Code)
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local configuration & secrets
+# (Keeps example config tracked, but ignores real config with keys/tokens)
+commitbot.toml
+.env
+*.local.toml
+
+# Distribution / Build artifacts
+build/
+dist/
+*.egg-info/
