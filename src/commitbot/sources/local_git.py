@@ -1,6 +1,6 @@
 import subprocess
 from pathlib import Path
-from commitbot.exceptions import NotGitRepositoryError, GitNotInstalledError
+from commitbot.exceptions import NotGitRepositoryError, GitNotInstalledError ,GitCommandError
 
 def find_repo_root(repo: str | Path | None = None) -> Path:
     if repo is None:
@@ -21,8 +21,25 @@ def find_repo_root(repo: str | Path | None = None) -> Path:
             check=True,
             text=True #if text = true stdout gives a string
         )
-        return Path(result.stdout.strip()) #.stout turns raw bytes to a string
+        return Path(result.stdout.strip()) #.stdout contains the captured output; text=True handles decoding. .strip() removes surrounding whitespace.
     except FileNotFoundError as e:
         raise GitNotInstalledError("Git executable not found. Install Git.") from e
     except subprocess.CalledProcessError as e:
         raise NotGitRepositoryError("Not a valid Git repository or Git command failed.") from e
+
+def get_staged_diff(repo: str | Path | None = None) -> str:
+
+    repository = find_repo_root(repo)
+    try:
+        result = subprocess.run(
+            ["git","diff","--cached","--no-ext-diff","--no-textconv"],
+            cwd = repository,
+            capture_output=True,
+            check=True,
+            text=True
+        )
+
+    except subprocess.CalledProcessError as e:
+        raise GitCommandError("Failed to read staged changes.") from e
+
+    return result.stdout
