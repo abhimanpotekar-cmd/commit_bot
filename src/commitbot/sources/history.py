@@ -10,9 +10,24 @@ from commitbot.sources.local_git import find_repo_root
 def get_recent_commit_messages(repo:str|Path|None=None,limit:int=10)->List[str]:
     if limit < 1:
         raise ValueError("limit must be at least 1")
+    repository = find_repo_root(repo)
+    check_head = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", "HEAD"],
+        cwd=repository,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
 
+    if check_head.returncode == 1:
+        return []
+    elif check_head.returncode != 0:
+        raise GitCommandError(
+            f"Failed to verify HEAD in repository: {check_head.stderr.strip()}"
+        )
     try:
-        repository = find_repo_root(repo)
+
+
         command_result = subprocess.run(
             ["git" ,"log" ,"-n" ,str(limit) ,"--format=%s"],
             cwd=repository,
@@ -31,6 +46,6 @@ def get_recent_commit_messages(repo:str|Path|None=None,limit:int=10)->List[str]:
         raise GitCommandError("Failed to read recent commit messages.") from e
 
 if __name__ == "__main__":
-    path = os.getenv("PATHCALCULATOR")
+    path = os.getenv("PATHNEW")
     print(get_recent_commit_messages(path,limit=2))
 

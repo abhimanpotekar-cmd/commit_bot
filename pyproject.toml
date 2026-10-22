@@ -17,3 +17,17 @@ dependencies = [
 dev = [
     "pytest>=9.1.1",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+commitbot = "commitbot.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"commitbot.prompts" = ["*.txt"]
+
