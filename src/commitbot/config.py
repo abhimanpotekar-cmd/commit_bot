@@ -1,5 +1,5 @@
 import tomllib
-from typing import Annotated
+from typing import Annotated,List
 from pathlib import Path
 from pydantic import BaseModel, Field,  StringConstraints
 
@@ -41,6 +41,10 @@ class Settings(BaseModel):
         description="Maximum number of diff characters allowed before chunking or summarization.",
         gt=0
     )
+    exclude_patterns:List[str] = Field(
+        default_factory=lambda: [".env", ".env.*", "*.pem", "*.key", "uv.lock", "package-lock.json"],#default_factory requires a callable returning a list rather than the list itself
+        description="Repository-relative file patterns excluded from model context",
+    )
 
 def load_settings(configration_file_path:None|str|Path = None) -> Settings:
 
@@ -49,7 +53,5 @@ def load_settings(configration_file_path:None|str|Path = None) -> Settings:
         return settings
     with open(configration_file_path,"rb") as f:
         resulting_dict = tomllib.load(f)
-        # settings.model=resulting_dict["model"]
-        # settings.base_url=resulting_dict["base_url"]
-        # settings.temperature=resulting_dict["temperature"]
+
     return Settings(**resulting_dict)
