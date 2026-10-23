@@ -12,3 +12,5 @@ class ModelTimeoutError(CommitBotError):
     pass
 class ModelResponseError(CommitBotError):
     pass
+class GitHubAPIError(CommitBotError):
+    pass
