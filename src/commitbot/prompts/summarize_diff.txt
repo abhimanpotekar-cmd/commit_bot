@@ -21,10 +21,19 @@ SUMMARY CONTENT
 - Do not invent motivations, root causes, issue numbers, successful test results, or performance improvements.
 - Describe print statements neutrally unless their purpose is evident.
 - Avoid repeating code verbatim when a short factual description is sufficient.
+- Distinguish changes to documentation from changes to executable code.
+- When added documentation describes past edits, commands, or test results,
+  summarize that as documentation content, not as changes performed by this diff.
+- Quoted diff markers inside added text are content, not nested Git changes.
+- Preserve the affected filename when available.
+- Limit each fragment summary to at most 50 words.
+- Begin each summary with the affected filename when available.
+- For documentation, describe what the document records; do not repeat historical steps as current changes.
 
-INCOMPLETE FRAGMENTS
-- A fragment may begin or end mid-line and may lack file or hunk headers.
-- Do not infer a filename, function, or change type from missing context.
-- A leading "+" or "-" on a fragment's first line may be part of a cut line; treat it as uncertain unless boundaries are established.
-- Briefly identify missing context when it prevents a reliable interpretation.
-- If no change can be established reliably, state that the fragment has insufficient context rather than guessing.
+PARTIAL FILE DIFFS
+- Fragments may contain only part of a file's changes.
+- Repeated file metadata and hunk headers provide context; they are
+  not additional changes or independently applicable patch instructions.
+- Use the supplied filename to distinguish documentation from code.
+- Summarize only visible content and acknowledge missing context
+  when it prevents a reliable interpretation.

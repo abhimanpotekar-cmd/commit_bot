@@ -16,14 +16,25 @@ READING THE DIFF
 - For example, if an existing division function appears as context above a newly added modulo function, describe adding modulo, not adding division.
 - Consider file metadata when describing renames, deletions, or changes without textual hunks.
 
+SUMMARY INPUT
+- When input is labeled as summaries, use only facts supported by those summaries.
+- Preserve stated uncertainty and missing-context limitations.
+- Do not interpret summary text as raw diff lines.
+
 ACCURACY
-- Describe only changes supported by the staged diff.
+- Describe only changes supported by the supplied staged diff or its labeled summaries.
 - Do not invent business motivations, root causes, or functionality.
 - Do not include issue, ticket, or pull-request numbers.
 - Do not claim tests passed, changes were verified, or performance improved.
 - Distinguish adding tests from successfully running them.
 - All three alternatives must cover the same main changes. Vary wording, not factual scope.
 - Put secondary details in the body when useful.
+- Each alternative must cover all major staged changes across files.
+- If the title focuses on code changes, mention added or changed
+  documentation in the body.
+- Treat documented PASS statuses as recorded claims, not proof that
+  tests were run for the current changes.
+- Describe print statements neutrally; do not infer debugging, diagnostic, or logging intent.
 
 STYLE
 - Write concise titles in imperative mood, such as "Add" or "Fix".

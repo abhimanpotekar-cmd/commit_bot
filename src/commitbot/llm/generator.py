@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 from ollama import ResponseError
 import httpx
-
+from commitbot.llm.summarizer import summarize_large_diff
 from commitbot.exceptions import ModelTimeoutError, ModelConnectionError, ModelResponseError
 from commitbot.llm.validation import validate_suggestions
 
@@ -38,9 +38,14 @@ def load_commit_prompt() -> str:
 
 def generate_commit_suggestions(staged_diff:str,recent_messages:List[str],settings:Settings)->CommitSuggestions:
 
-    context = build_commit_context(staged_diff,recent_messages)
+
+
     if settings.max_diff_chars<len(staged_diff):
-        raise ValueError("Staged diff exceeds max_diff_chars; reduce staged changes or increase the limit.")
+
+        summarized = summarize_large_diff(staged_diff,settings)
+        context = build_commit_context(summarized,recent_messages,is_summary=True)
+    else:
+        context = build_commit_context(staged_diff, recent_messages)
     prompt=load_commit_prompt()
     try:
         llm = create_chat_model(settings)

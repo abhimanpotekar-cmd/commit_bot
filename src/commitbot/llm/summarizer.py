@@ -57,9 +57,12 @@ def summarize_large_diff(diff_str:str,settings:Settings)->str:
     summarized_diff_list=[]
     i=1
     for chunk in list_diff:
-        summarized_diff=f"Fragment {i} summary\n{summarize_diff_chunk(chunk,settings)}"
+        summarized_diff = (
+            f"Fragment {i} summary\n"
+            f"{summarize_diff_chunk(chunk, settings)}"
+        )
         summarized_diff_list.append(summarized_diff)
-        i=i+1
+        i += 1
     summary_str = "\n\n".join(summarized_diff_list)
     if(len(summary_str)>settings.max_diff_chars):
         raise ValueError("The summary of diff exceeds the maximum character limit.")
