@@ -2,11 +2,14 @@ import importlib.resources
 from typing import List
 import os
 from dotenv import load_dotenv
+from ollama import ResponseError
+import httpx
 
+from commitbot.exceptions import ModelTimeoutError, ModelConnectionError, ModelResponseError
 from commitbot.llm.validation import validate_suggestions
 
 load_dotenv()
-from langchain.messages import  HumanMessage ,SystemMessage
+from langchain_core.messages import  HumanMessage ,SystemMessage
 from commitbot.config import Settings, load_settings
 from commitbot.llm.ollama_client import create_chat_model
 from commitbot.processing.context import build_commit_context
@@ -39,23 +42,38 @@ def generate_commit_suggestions(staged_diff:str,recent_messages:List[str],settin
     if settings.max_diff_chars<len(staged_diff):
         raise ValueError("Staged diff exceeds max_diff_chars; reduce staged changes or increase the limit.")
     prompt=load_commit_prompt()
-    llm = create_chat_model(settings)
-    structured_suggesstions = llm.with_structured_output(CommitSuggestions,method="json_schema")
-    output = structured_suggesstions.invoke([SystemMessage(prompt),HumanMessage(context)])
     try:
-        finall_commits_suggestions = validate_suggestions(
-            output,
-        )
-    except ValueError as e:
-        retry_messages = [
-            SystemMessage(content=prompt),
-            HumanMessage(content=context),
-            HumanMessage(content=f"Validation error: {e}. Please correct and return valid commit suggestions."),
-        ]
-        retry_output = structured_suggesstions.invoke(retry_messages)
-        retry_commit=validate_suggestions(
-            retry_output, )
-        return retry_commit
+        llm = create_chat_model(settings)
+        structured_suggesstions = llm.with_structured_output(CommitSuggestions,method="json_schema")
+        output = structured_suggesstions.invoke([SystemMessage(prompt),HumanMessage(context)])
+
+        try:
+            finall_commits_suggestions = validate_suggestions(
+                output,
+            )
+        except ValueError as e:
+            retry_messages = [
+                SystemMessage(content=prompt),
+                HumanMessage(content=context),
+                HumanMessage(content=f"Validation error: {e}. Please correct and return valid commit suggestions."),
+            ]
+            retry_output = structured_suggesstions.invoke(retry_messages)
+            retry_commit=validate_suggestions(
+                retry_output, )
+            return retry_commit
+    except httpx.TimeoutException as e:
+        raise ModelTimeoutError(
+            f"Model request timed out after {settings.request_timeout} seconds. "
+            "Try increasing request_timeout in settings."
+        ) from e
+    except (ConnectionError, httpx.ConnectError) as e:
+        raise ModelConnectionError(
+            f"Failed to conect to Ollama at {settings.base_url}. Verify the service is running."
+        ) from e
+    except ResponseError as e:
+        raise ModelResponseError(
+            f"Ollama API error for model '{settings.model}': {e.error}"
+        ) from e
     return finall_commits_suggestions
 
 if __name__ == "__main__":
