@@ -3,7 +3,7 @@ from typing import Any
 import requests
 import httpx
 import urllib.parse
-
+from commitbot.processing.filters import should_exclude_file
 from commitbot.exceptions import GitHubAPIError
 
 
@@ -117,7 +117,31 @@ def get_pull_request_files(client: httpx.Client,owner: str,repo: str,pr_num: int
 
     return all_files
 
+def filter_pull_request_files(files: list[dict[str, Any]],patterns: list[str],) -> list[dict[str, Any]]:
+    allowed_files: list[dict[str, Any]] = []
 
+    for file_data in files:
+        filename = file_data.get("filename")
+
+        if not isinstance(filename, str) or not filename.strip():
+            raise GitHubAPIError("GitHub file entry has a missing or invalid filename.")
+
+        if should_exclude_file(filename, patterns):
+            continue
+
+        if file_data.get("status") == "renamed":
+            previous_filename = file_data.get("previous_filename")
+
+            if previous_filename is not None:
+                if (not isinstance(previous_filename, str)or not previous_filename.strip()):
+                    raise GitHubAPIError("GitHub file entry has an invalid previous filename.")
+
+                if should_exclude_file(previous_filename, patterns):
+                    continue
+
+        allowed_files.append(file_data)
+
+    return allowed_files
 
 if __name__ == "__main__":
     result = parse_pull_request_url(
@@ -190,3 +214,30 @@ if __name__ == "__main__":
                 "| Status:", file_data["status"],
                 "| Has patch:", bool(file_data.get("patch")),
             )
+    test_files = [
+        {"filename": "src/main.py", "status": "modified", "patch": "+print('Hi')"},
+        {"filename": "backend/.env", "status": "added", "patch": "+DUMMY=value"},
+        {
+            "filename": "config.txt",
+            "previous_filename": ".env",
+            "status": "renamed",
+        },
+        {"filename": "image.png", "status": "added"},
+    ]
+
+    filtered = filter_pull_request_files(test_files, [".env"])
+    remaining = [entry["filename"] for entry in filtered]
+
+    print("Remaining files:", remaining)
+    print("Filtering passed:", remaining == ["src/main.py", "image.png"])
+    print("Entries preserved:", filtered == [test_files[0], test_files[3]])
+
+    excluded = filter_pull_request_files(test_files, ["*"])
+    print("All-excluded check:", excluded == [])
+
+    try:
+        filter_pull_request_files([{"status": "added"}], [])
+    except GitHubAPIError as e:
+        print("Missing filename rejected:", e)
+    else:
+        print("FAIL: Missing filename was accepted")
