@@ -1,5 +1,5 @@
 from typing import Any
-
+import json
 import requests
 import httpx
 import urllib.parse
@@ -143,6 +143,124 @@ def filter_pull_request_files(files: list[dict[str, Any]],patterns: list[str],) 
 
     return allowed_files
 
+
+def build_pull_request_diff(files: list[dict[str, Any]]) -> str:
+    sections: list[str] = []
+
+    for file_data in files:
+        filename = file_data.get("filename")
+        status = file_data.get("status")
+
+        if not isinstance(filename, str) or not filename.strip():
+            raise GitHubAPIError("Missing or invalid filename.")
+
+        if not isinstance(status, str) or not status.strip():
+            raise GitHubAPIError("Missing or invalid file status.")
+
+        previous_filename = file_data.get("previous_filename")
+        old_filename = filename
+
+        if status == "renamed":
+            if (not isinstance(previous_filename, str)or not previous_filename.strip()):
+                raise GitHubAPIError("Renamed file has a missing or invalid previous filename.")
+            old_filename = previous_filename
+
+        old_path = json.dumps("a/" + old_filename)
+        new_path = json.dumps("b/" + filename)
+
+        section = (
+            f"diff --git {old_path} {new_path}\n"
+            f"GitHub change status: {status}\n"
+        )
+
+        if status == "renamed":
+            section += (f"Previous filename: {json.dumps(previous_filename)}\n")
+
+        source_path = "/dev/null" if status == "added" else old_path
+        target_path = "/dev/null" if status == "removed" else new_path
+
+        section += f"--- {source_path}\n+++ {target_path}\n"
+
+        patch = file_data.get("patch")
+
+        if patch is not None and not isinstance(patch, str):
+            raise GitHubAPIError("Invalid patch value from GitHub.")
+
+        if patch:
+            section += patch
+            if not section.endswith("\n"):
+                section += "\n"
+        else:
+            section += ("Patch unavailable; only file metadata is known.\n")
+
+        sections.append(section)
+
+    return "\n".join(sections)
+
+
+
+
+def get_recent_repository_messages(client: httpx.Client,owner: str,repo: str,ref: str,limit: int = 10,) -> list[str]:
+    if limit < 1:
+        raise ValueError("Limit cannot be less than 1.")
+
+    messages: list[str] = []
+    page = 1
+    page_size = min(limit, 100)
+
+    try:
+        while len(messages) < limit:
+            response = client.get(
+                f"/repos/{owner}/{repo}/commits",
+                params={
+                    "sha": ref,
+                    "per_page": page_size,
+                    "page": page,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            if not isinstance(data, list):
+                raise GitHubAPIError("Expected a list of commits from GitHub.")
+
+            for entry in data:
+                if not isinstance(entry, dict):
+                    raise GitHubAPIError("Invalid commit entry.")
+
+                commit = entry.get("commit")
+                if not isinstance(commit, dict):
+                    raise GitHubAPIError("Missing or invalid commit details.")
+
+                message = commit.get("message")
+                if not isinstance(message, str):
+                    raise GitHubAPIError("Missing or invalid commit message.")
+
+                lines = message.splitlines()
+                if not lines or not lines[0].strip():
+                    raise GitHubAPIError("Commit title is empty.")
+
+                messages.append(lines[0])
+
+                if len(messages) == limit:
+                    break
+
+            if len(messages) == limit or len(data) < page_size:
+                break
+
+            page += 1
+
+    except httpx.TimeoutException as e:
+        raise GitHubAPIError("GitHub request timed out.") from e
+    except httpx.RequestError as e:
+        raise GitHubAPIError("Failed to send request to GitHub.") from e
+    except httpx.HTTPStatusError as e:
+        raise GitHubAPIError(f"GitHub API returned HTTP {e.response.status_code}.") from e
+    except ValueError as e:
+        raise GitHubAPIError("GitHub returned invalid JSON.") from e
+
+    return messages
+
 if __name__ == "__main__":
     result = parse_pull_request_url(
         "https://github.com/example/calculator/pull/12"
@@ -203,6 +321,13 @@ if __name__ == "__main__":
             repo=repo,
             pr_num=pr_number,
         )
+        recent_messages = get_recent_repository_messages(
+            client=client,
+            owner=owner,
+            repo=repo,
+            ref=pull_request["base"]["sha"],
+            limit=101,
+        )
 
         print("Retrieved files:", len(files))
         print("Expected files:", pull_request["changed_files"])
@@ -241,3 +366,64 @@ if __name__ == "__main__":
         print("Missing filename rejected:", e)
     else:
         print("FAIL: Missing filename was accepted")
+
+    sample_files = [
+        {
+            "filename": "calculator.py",
+            "status": "modified",
+            "patch": "@@ -1 +1 @@\n-return a-b\n+return a+b",
+        },
+        {
+            "filename": "docs/new guide.md",
+            "previous_filename": "docs/old guide.md",
+            "status": "renamed",
+        },
+        {
+            "filename": "image.png",
+            "status": "added",
+        },
+    ]
+
+    sample_diff = build_pull_request_diff(sample_files)
+    print("\n=== Constructed PR diff ===")
+    print(sample_diff)
+
+    print("Empty input check:", build_pull_request_diff([]) == "")
+    print(
+        "Patch preserved:",
+        sample_files[0]["patch"] in sample_diff,
+    )
+    print(
+        "Rename metadata included:",
+        'Previous filename: "docs/old guide.md"' in sample_diff,
+    )
+    print(
+        "Missing patch explained:",
+        "Patch unavailable; only file metadata is known." in sample_diff,
+    )
+
+
+
+    print("\nRecent base-repository commit titles:")
+    for number, message in enumerate(recent_messages, start=1):
+        print(f"{number}. {message}")
+
+    print("At most 3 titles:", len(recent_messages) <= 3)
+    print(
+        "Single-line titles:",
+        all(
+            "\n" not in message and "\r" not in message
+            for message in recent_messages
+        ),
+    )
+    print("\nRetrieved commit titles:", len(recent_messages))
+    print("Pagination count check:", len(recent_messages) == 101)
+    print(
+        "Single-line titles:",
+        all(
+            "\n" not in message and "\r" not in message
+            for message in recent_messages
+        ),
+    )
+    print("First title:", recent_messages[0])
+    print("Last title:", recent_messages[-1])
