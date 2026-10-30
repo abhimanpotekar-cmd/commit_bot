@@ -42,10 +42,12 @@ def get_staged_diff(repo: str | Path | None = None,files:list[str]|None=None) ->
     try:
         result = subprocess.run(
             commands,
-            cwd = repository,
+            cwd=repository,
             capture_output=True,
             check=True,
-            text=True
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
 
     except subprocess.CalledProcessError as e:
@@ -57,14 +59,15 @@ def get_staged_files(repo: str | Path | None = None) -> list[str]:
     repository=find_repo_root(repo)
     try:
         cached_diff = subprocess.run(
-            ["git","diff","--cached","--name-only","--no-renames","-z"],
-            # -z preserves filenames containing spaces or newlines. --no-renames exposes both paths of a rename so we can filter them separately later.
+            ["git", "diff", "--cached", "--name-only", "--no-renames", "-z"],
             cwd=repository,
             capture_output=True,
             check=True,
-            text=True
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
-
+    # -z preserves filenames containing spaces or newlines. --no-renames exposes both paths of a rename so we can filter them separately later.
 
     except subprocess.CalledProcessError as e:
         raise GitCommandError("Failed to read staged files.") from e

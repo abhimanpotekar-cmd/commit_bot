@@ -27,13 +27,14 @@ def get_recent_commit_messages(repo:str|Path|None=None,limit:int=10)->List[str]:
         )
     try:
 
-
         command_result = subprocess.run(
-            ["git" ,"log" ,"-n" ,str(limit) ,"--format=%s"],
+            ["git", "log", "-n", str(limit), "--format=%s"],
             cwd=repository,
-            capture_output = True,
-            check = True,
-            text = True
+            capture_output=True,
+            check=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         commit_list = list()
 
