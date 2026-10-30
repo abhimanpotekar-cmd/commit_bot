@@ -46,12 +46,27 @@ class Settings(BaseModel):
         description="Repository-relative file patterns excluded from model context",
     )
 
-def load_settings(configration_file_path:None|str|Path = None) -> Settings:
+def load_settings(configration_file_path: None | str | Path = None) -> Settings:
 
-    settings=Settings()
-    if configration_file_path is None:
-        return settings
-    with open(configration_file_path,"rb") as f:
-        resulting_dict = tomllib.load(f)
+    if configration_file_path is not None:
+        path = Path(configration_file_path)
+        with open(path, "rb") as f:
+            resulting_dict = tomllib.load(f)
+        return Settings(**resulting_dict)
 
-    return Settings(**resulting_dict)
+
+    default_config = Path("commitbot.toml")
+    if default_config.is_file():
+        with open(default_config, "rb") as f:
+            resulting_dict = tomllib.load(f)
+        return Settings(**resulting_dict)
+
+
+    return Settings()
+
+
+if __name__ == "__main__":
+    settings = load_settings()
+    print("Loaded model:", settings.model)
+    print("History limit:", settings.history_limit)
+    print("Exclude patterns:", settings.exclude_patterns)

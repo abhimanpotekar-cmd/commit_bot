@@ -36,16 +36,13 @@ def load_commit_prompt() -> str:
 
     return prompt_text
 
-def generate_commit_suggestions(staged_diff:str,recent_messages:List[str],settings:Settings)->CommitSuggestions:
+def generate_commit_suggestions(staged_diff: str,recent_messages: List[str],settings: Settings,source: str = "staged",) -> CommitSuggestions:
 
-
-
-    if settings.max_diff_chars<len(staged_diff):
-
-        summarized = summarize_large_diff(staged_diff,settings)
-        context = build_commit_context(summarized,recent_messages,is_summary=True)
+    if settings.max_diff_chars < len(staged_diff):
+        summarized = summarize_large_diff(staged_diff, settings)
+        context = build_commit_context(summarized, recent_messages, is_summary=True, source=source)
     else:
-        context = build_commit_context(staged_diff, recent_messages)
+        context = build_commit_context(staged_diff, recent_messages, is_summary=False, source=source)
     prompt=load_commit_prompt()
     try:
         llm = create_chat_model(settings)
