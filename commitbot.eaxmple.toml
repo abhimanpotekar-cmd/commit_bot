@@ -1,0 +1,21 @@
+# Local Ollama model to use for generation and summarization
+model = "qwen3:1.7b"
+# URL of your local Ollama instance
+base_url = "http://localhost:11434"
+# Temperature controls creativity (0.0 = deterministic, 1.0 = creative)
+temperature = 0.23
+# Timeout in seconds for Ollama API requests
+request_timeout = 120.0
+# Number of recent Git commit titles used as style examples
+history_limit = 10
+# Maximum characters in diff before chunking and summarizing
+max_diff_chars = 12000
+# File patterns to exclude from model diff context (supports glob syntax)
+exclude_patterns = [
+    ".env",
+    ".env.*",
+    "*.pem",
+    "*.key",
+    "uv.lock",
+    "package-lock.json"
+]
